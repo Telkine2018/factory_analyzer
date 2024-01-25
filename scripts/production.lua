@@ -638,6 +638,7 @@ function Production.solve(factory)
     local rank_map = nil
     while (true) do
         local eq_var_names = {}
+        local name_map = {}
         for i = 1, #equations do
             ---@type table<string, number>
             local pivot_eq = equations[i]
@@ -645,7 +646,7 @@ function Production.solve(factory)
             -- find pivot
             local pivot_var, pivot_value, rank_min
             for var_name, value in pairs(pivot_eq) do
-                if value ~= 0 and not eq_var_names[var_name] then
+                if value ~= 0 and not name_map[var_name] then
                     if rank_map then
                         if not pivot_var then
                             pivot_var = var_name
@@ -673,6 +674,7 @@ function Production.solve(factory)
             if not pivot_value then goto next_eq end
 
             eq_var_names[i] = pivot_var
+            name_map[pivot_var] = true
             for n, v in pairs(pivot_eq) do
                 pivot_eq[n] = v / pivot_value
             end
@@ -737,7 +739,21 @@ function Production.solve(factory)
                 end
             end
             var_values[var] = value
-            if value > 1 or value < 0 then need_pass2 = true end
+            if value > 1 then
+                local to_change = { [var] = true }
+                for j = i, #equations do
+                    if to_change[eq_var_names[j]] then
+                        for name, _ in pairs(equations[j]) do
+                            to_change[name] = true
+                        end
+                    end
+                end
+                for name, _ in pairs(to_change) do
+                    var_values[name] = var_values[name] / value
+                end
+            elseif value < 0 then
+                need_pass2 = true
+            end
         end
 
         factory.var_values = var_values
@@ -751,14 +767,10 @@ function Production.solve(factory)
                     local usage = var_values[recipe_name]
                     if usage then machine.usage = usage end
                     for ingredient, count in pairs(machine.ingredients) do
-                        ingredient_map[ingredient] =
-                            (ingredient_map[ingredient] or 0) + count *
-                            machine.theorical_craft_s * machine.usage
+                        ingredient_map[ingredient] = (ingredient_map[ingredient] or 0) + count * machine.theorical_craft_s * machine.usage
                     end
                     for product, count in pairs(machine.products) do
-                        product_map[product] =
-                            (product_map[product] or 0) + count *
-                            machine.produced_craft_s * machine.usage
+                        product_map[product] = (product_map[product] or 0) + count * machine.produced_craft_s * machine.usage
                     end
                 end
             end
