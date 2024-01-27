@@ -757,7 +757,8 @@ function Production.solve(factory)
         end
 
         factory.var_values = var_values
-        if not need_pass2 then
+        iter = iter + 1
+        if not need_pass2 or iter > 3 then
             local ingredient_map = {}
             local product_map = {}
 
@@ -786,13 +787,7 @@ function Production.solve(factory)
             factory.theorical_ingredient_map = ingredient_map
             factory.theorical_product_map = product_map
             factory.usage_map = usage_map
-            factory.solver_failure = false
-            return
-        end
-
-        iter = iter + 1
-        if iter > 3 then
-            factory.solver_failure = true
+            factory.solver_failure = need_pass2
             return
         end
 
