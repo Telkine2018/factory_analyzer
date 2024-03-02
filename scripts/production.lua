@@ -635,7 +635,7 @@ function Production.solve(factory)
     local function trim(v) return math.abs(v) > 0.0001 and v or nil end
 
     local iter = 1
-    local rank_map = nil
+    local max_iter = settings.global[commons.prefix .. "-solver_iteration"].value
     while (true) do
         local eq_var_names = {}
         local name_map = {}
@@ -647,27 +647,12 @@ function Production.solve(factory)
             local pivot_var, pivot_value, rank_min
             for var_name, value in pairs(pivot_eq) do
                 if value ~= 0 and not name_map[var_name] then
-                    if rank_map then
-                        if not pivot_var then
-                            pivot_var = var_name
-                            pivot_value = value
-                            rank_min = rank_map[var_name]
-                        else
-                            local rank = rank_map[var_name]
-                            if rank < rank_min then
-                                pivot_var = var_name
-                                pivot_value = value
-                                rank_min = rank
-                            end
-                        end
-                    else
-                        if not pivot_value then
-                            pivot_var = var_name
-                            pivot_value = value
-                        elseif math.abs(value) > math.abs(pivot_value) then
-                            pivot_var = var_name
-                            pivot_value = value
-                        end
+                    if not pivot_value then
+                        pivot_var = var_name
+                        pivot_value = value
+                    elseif math.abs(value) > math.abs(pivot_value) then
+                        pivot_var = var_name
+                        pivot_value = value
                     end
                 end
             end
@@ -738,6 +723,9 @@ function Production.solve(factory)
                     end
                 end
             end
+            if value < 0 and value > -0.00001 then
+                value = 0
+            end
             var_values[var] = value
             if value > 1 then
                 local to_change = { [var] = true }
@@ -753,12 +741,19 @@ function Production.solve(factory)
                 end
             elseif value < 0 then
                 need_pass2 = true
+                for k = i, #equations - 1 do
+                    equations[k] = equations[k + 1]
+                    eq_var_names[k] = eq_var_names[k + 1]
+                end
+                equations[#equations] = eq
+                eq_var_names[#equations] = var
+                break
             end
         end
 
         factory.var_values = var_values
         iter = iter + 1
-        if not need_pass2 or iter > 3 then
+        if not need_pass2 or iter > max_iter then
             local ingredient_map = {}
             local product_map = {}
 
@@ -789,33 +784,6 @@ function Production.solve(factory)
             factory.usage_map = usage_map
             factory.solver_failure = need_pass2
             return
-        end
-
-        local var_ranks = {}
-        for n, v in pairs(var_values) do
-            table.insert(var_ranks, { name = n, value = v })
-        end
-        table.sort(var_ranks, function(r1, r2) return r1.value < r2.value end)
-
-        rank_map = {}
-        for i = 1, #var_ranks do rank_map[var_ranks[i].name] = i end
-
-        -- sort equations
-        local eq_table = {}
-        for index, eq in pairs(equations) do
-            local eq_name = eq_var_names[index]
-            if eq_name then
-                local eq_index = rank_map[eq_name]
-                if eq_index then
-                    table.insert(eq_table, { index = eq_index, eq = eq })
-                end
-            end
-        end
-        table.sort(eq_table, function(e1, e2) return e1.index > e2.index end)
-
-        equations = {}
-        for _, eq_link in pairs(eq_table) do
-            table.insert(equations, eq_link.eq)
         end
     end
 end
