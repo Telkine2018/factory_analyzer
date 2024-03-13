@@ -729,10 +729,16 @@ function Production.solve(factory)
             var_values[var] = value
             if value > 1 then
                 local to_change = { [var] = true }
-                for j = i, #equations do
-                    if to_change[eq_var_names[j]] then
+                local need_process = true
+
+                while need_process do
+                    need_process = false
+                    for j = i, #equations do
                         for name, _ in pairs(equations[j]) do
-                            to_change[name] = true
+                            if not to_change[name] then
+                                to_change[name] = true
+                                need_process = true
+                            end
                         end
                     end
                 end
