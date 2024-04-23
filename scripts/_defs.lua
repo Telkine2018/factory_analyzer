@@ -70,3 +70,16 @@ local tools = require("scripts.tools")
 ---@field name string
 ---@field usage number                          @ [0..1] usage percent of recipe
 ---@field transfert table<string, number>       @ table of product  (<0 ingredient, >0 production)
+
+---@class ProductionConfig
+---@field machine_name string
+---@field machine_modules string[]
+---@field beacon_name string?
+---@field beacon_modules string[]?
+---@field beacon_count integer?
+
+---@class RemoteRecipe : ProductionConfig
+---@field name string
+
+---@class RemoteConfig
+---@field recipes {[string]:RemoteRecipe}

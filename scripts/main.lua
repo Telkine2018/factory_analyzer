@@ -194,6 +194,13 @@ function Analyzer.create_frame(player, factory)
     }
     cb.style.left_margin = 10
 
+    local bgraph = command_flow2.add {
+        type = "sprite-button",
+        sprite = prefix .. "-graph"
+    }
+    bgraph.style.size = 28
+    tools.set_name_handler(bgraph, prefix .. ".bgraph");
+
     -- ]]
 
     -- #endregion
@@ -843,13 +850,42 @@ tools.on_event(defines.events.on_lua_shortcut, function(e)
     end
 end)
 
+tools.on_named_event(prefix .. ".bgraph", defines.events.on_gui_click,
+    ---@param e EventData.on_gui_click
+    function(e)
+        ---@type LuaPlayer
+        local player = game.players[e.player_index]
+        local vars = tools.get_vars(player)
+
+        ---@type Factory
+        local factory = vars.factory
+
+        if not factory.machines then
+            return
+        end
+
+        ---@type RemoteConfig
+        local config = {}
+        local recipes = {}
+        for _, machine in pairs(factory.machines) do
+            local name = machine.recipe_name
+            local recipe = {name=name}
+            recipes[name] = recipe
+        end
+        config.recipes = recipes
+
+        if (remote.interfaces["factory_graph"]) then
+            remote.call("factory_graph", "add_recipes", e.player_index, config)
+        else
+            player.print("Mod Factory graph not present")
+        end
+    end)
 
 remote.add_interface("factory_analyzer", {
 
     ---@param player_index integer      -- train id
     ---@return table<string, number>?
-    get_ingredients = function(player_index) 
-
+    get_ingredients = function(player_index)
         ---@type LuaPlayer
         local player = game.players[player_index]
         local vars = tools.get_vars(player)
@@ -858,7 +894,7 @@ remote.add_interface("factory_analyzer", {
         local factory = vars.factory
         if not factory then return nil end
 
-        if not factory.theorical_ingredient_map then return nil end 
+        if not factory.theorical_ingredient_map then return nil end
 
         local result = {}
         for name, amount in pairs(factory.theorical_ingredient_map) do
