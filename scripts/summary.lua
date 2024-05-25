@@ -105,11 +105,13 @@ function Summary.create(factory, inner_frame)
     local function add_slot(p)
 
         local label = ""
+
         local flow = summary_table.add {type = "flow", direction = "horizontal"}
 
+        local sprite_name = commons.get_sprite_name(p.product)
         local button = flow.add {
             type = "sprite-button",
-            sprite = p.product,
+            sprite = sprite_name,
             name = prefix .. ".product",
             tooltip = p.label,
             style = prefix .. "_button_default"
@@ -136,14 +138,8 @@ function Summary.create(factory, inner_frame)
     end
 
     local function add_to_list(list, product)
-        local label, signal  = get_product_name(product)
-        local proto
+        local label, _, proto  = get_product_name(product)
         local order
-        if signal.type == "item" then
-            proto = game.item_prototypes[signal.name]
-        else
-            proto = game.fluid_prototypes[signal.name]
-        end
         order = proto.group.order .. "  " ..  proto.subgroup.order .. "  " .. proto.order
         table.insert(list, {
             product=product,
@@ -207,10 +203,8 @@ function Summary.update(frame, factory)
     local function set_product(name)
         local t_consume, t_produce, t_net, r_consume, r_produce
 
-        t_consume = factory.unit_coef *
-                        (factory.theorical_ingredient_map[name] or 0)
-        t_produce = factory.unit_coef *
-                        (factory.theorical_product_map[name] or 0)
+        t_consume = factory.unit_coef * (factory.theorical_ingredient_map[name] or 0)
+        t_produce = factory.unit_coef * (factory.theorical_product_map[name] or 0)
 
         r_consume = factory.unit_coef * (factory.real_ingredient_map[name] or 0)
         r_produce = factory.unit_coef * (factory.real_product_map[name] or 0)

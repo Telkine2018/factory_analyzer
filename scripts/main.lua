@@ -369,7 +369,7 @@ local function process_product_button(e)
                 b = select_frame.add {
                     type = "sprite-button",
                     name = name,
-                    sprite = product,
+                    sprite = commons.get_sprite_name(product),
                     tooltip = lname
                 }
                 b.tags = { product = product }
@@ -829,7 +829,7 @@ tools.on_event(defines.events.on_gui_hover, ---@param e EventData.on_gui_hover
 
         local tooltip = {
             format, string.format("%.2f", real), string.format("%.2f", theorical),
-            "[" .. signal.type .. "=" .. signal.name .. "]", label
+            "[" .. signal.type .. "=" .. commons.get_sprite_name(signal.name) .. "]", label
         }
         e.element.tooltip = tooltip
     end)

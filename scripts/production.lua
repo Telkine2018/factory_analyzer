@@ -60,6 +60,9 @@ function Production.load_structure(factory, entities)
         end
     end
 
+    local machines_with_temperature = {}
+    local ingredients_with_temperature = {}
+    local products_with_temperature = {}
     for _, entity in pairs(entities) do
         if entity.valid and
             not black_list_subgroups[entity.prototype.subgroup.name] then
@@ -74,9 +77,7 @@ function Production.load_structure(factory, entities)
             local previous_recipe = machine.recipe_name
             machine.recipe_name = nil
             if machine.type == "assembling-machine" or machine.type == "furnace" then
-                local recipe = entity.get_recipe() or
-                    (entity.type == "furnace" and
-                        entity.previous_recipe)
+                local recipe = entity.get_recipe() or (entity.type == "furnace" and entity.previous_recipe)
                 machine.theorical_craft_s = 0
                 if recipe then
                     machine.theorical_craft_s =
@@ -97,19 +98,50 @@ function Production.load_structure(factory, entities)
                     machine.ingredients_info = {}
                     for _, ingredient in ipairs(recipe.ingredients) do
                         local amount = ingredient.amount
-                        local product_name =
-                            ingredient.type .. "/" .. ingredient.name
+                        local type = ingredient.type
+                        local product_name = type .. "/" .. ingredient.name
+                        local maximum_temperature
+                        local minimum_temperature
+                        if type == "fluid" then
+                            ---@diagnostic disable-next-line: undefined-field
+                            maximum_temperature = ingredient.maximum_temperature
+                            ---@diagnostic disable-next-line: undefined-field
+                            minimum_temperature = ingredient.minimum_temperature
+
+                            if maximum_temperature or minimum_temperature then
+                                product_name = product_name .. "@"
+                                if minimum_temperature and minimum_temperature > -1e300 then
+                                    product_name = product_name .. minimum_temperature
+                                end
+                                product_name = product_name .. "@"
+                                if maximum_temperature and maximum_temperature < 1e300 then
+                                    product_name = product_name .. maximum_temperature;;
+                                end
+                                machines_with_temperature[machine.id] = machine
+                                local iwt = ingredients_with_temperature[ingredient.name]
+                                if not iwt then
+                                    iwt = {}
+                                    ingredients_with_temperature[ingredient.name] = iwt
+                                end
+                                table.insert(iwt, {
+                                    name = product_name,
+                                    minimum_temperature = minimum_temperature,
+                                    maximum_temperature = maximum_temperature
+                                })
+                            end
+                        end
 
                         ingredients[product_name] = amount
                         table.insert(machine.ingredients_info, {
                             name = ingredient.name,
                             type = ingredient.type,
-                            amount = amount
+                            amount = amount,
+                            minimum_temperature = minimum_temperature,
+                            maximum_temperature = maximum_temperature
                         })
 
                         local old_count = ingredient_map[product_name] or 0
-                        ingredient_map[product_name] =
-                            old_count + amount * machine.theorical_craft_s
+                        ingredient_map[product_name] = old_count + amount * machine.theorical_craft_s
                     end
                     machine.ingredients = ingredients
 
@@ -135,17 +167,35 @@ function Production.load_structure(factory, entities)
                         amount = total / machine.produced_craft_s
 
                         local product_name = product.type .. "/" .. product.name
+                        local temperature
+                        if product.type == "fluid" then
+                            ---@diagnostic disable-next-line: undefined-field
+                            temperature = product.temperature
+                            if temperature then
+                                product_name = product_name .. "@" .. temperature
+                                machines_with_temperature[machine.id] = machine
+                                local pwt = products_with_temperature[product.name]
+                                if not pwt then
+                                    pwt = {}
+                                    products_with_temperature[product.name] = pwt
+                                end
+                                table.insert(pwt, {
+                                    name = product_name,
+                                    temperature = temperature
+                                })
+                            end
+                        end
+
                         products[product_name] = amount
                         table.insert(machine.product_infos, {
                             name = product.name,
                             type = product.type,
-                            amount = amount
+                            amount = amount,
+                            temperature = temperature
                         })
 
                         local old_count = product_map[product_name] or 0
-                        product_map[product_name] = old_count +
-                            machine.produced_craft_s *
-                            amount
+                        product_map[product_name] = old_count + machine.produced_craft_s * amount
                     end
                     if #recipe.products <= 1 then
                         machine.first_product_name = nil
@@ -153,8 +203,7 @@ function Production.load_structure(factory, entities)
                     machine.products = products
                 end
                 machine.energy_usage = entity.prototype.energy_usage
-                machine.reqenergy = machine.energy_usage *
-                    (1 + entity.consumption_bonus)
+                machine.reqenergy = machine.energy_usage * (1 + entity.consumption_bonus)
             elseif machine.type == "mining-drill" then
                 local prototype = entity.prototype
                 local productivity_bonus = entity.productivity_bonus
@@ -190,11 +239,9 @@ function Production.load_structure(factory, entities)
 
                     if not res then
                         local resource_prototype = resource.prototype
-                        local is_minable =
-                            prototype.resource_categories[resource_prototype.resource_category]
+                        local is_minable = prototype.resource_categories[resource_prototype.resource_category]
                         if is_minable then
-                            local mineable_properties =
-                                resource_prototype.mineable_properties
+                            local mineable_properties = resource_prototype.mineable_properties
 
                             resources[resource_name] = {
                                 occurrences = 1,
@@ -204,9 +251,7 @@ function Production.load_structure(factory, entities)
                             res = resources[resource_name]
                             num_resource_entities = num_resource_entities + 1
                             if resource_prototype.infinite_resource then
-                                res.mining_time = (res.mining_time /
-                                    (resource.amount /
-                                        resource_prototype.normal_resource_amount))
+                                res.mining_time = (res.mining_time / (resource.amount / resource_prototype.normal_resource_amount))
                                 if not machine.recipe_name then
                                     machine.recipe_name = resource_name
                                 end
@@ -220,22 +265,16 @@ function Production.load_structure(factory, entities)
 
                 machine.productivity = (productivity_bonus + 1)
                 if num_resource_entities > 0 then
-                    local drill_multiplier =
-                        (prototype.mining_speed * (speed_bonus + 1))
+                    local drill_multiplier = (prototype.mining_speed * (speed_bonus + 1))
 
                     for _, resource_data in pairs(resources) do
-                        local resource_multiplier =
-                            ((drill_multiplier / resource_data.mining_time) *
-                                (resource_data.occurrences /
-                                    num_resource_entities))
+                        local resource_multiplier = ((drill_multiplier / resource_data.mining_time) * (resource_data.occurrences / num_resource_entities))
 
                         for _, product in pairs(resource_data.products) do
                             local product_per_second
                             local amount = product.amount
                             if not amount then
-                                amount =
-                                    (product.amount_max + product.amount_min) /
-                                    2
+                                amount = (product.amount_max + product.amount_min) / 2
                             end
 
                             product_per_second = amount * resource_multiplier
@@ -250,9 +289,7 @@ function Production.load_structure(factory, entities)
                             })
 
                             local old_count = product_map[name] or 0
-                            product_map[name] =
-                                old_count + product_per_second *
-                                machine.productivity
+                            product_map[name] = old_count + product_per_second * machine.productivity
                         end
                     end
                 end
@@ -264,10 +301,8 @@ function Production.load_structure(factory, entities)
                 end
 
                 machine.energy_usage = entity.prototype.energy_usage
-                machine.reqenergy = machine.energy_usage *
-                    (1 + entity.consumption_bonus)
-                machine.produced_craft_s =
-                    machine.theorical_craft_s * (machine.productivity or 1)
+                machine.reqenergy = machine.energy_usage * (1 + entity.consumption_bonus)
+                machine.produced_craft_s = machine.theorical_craft_s * (machine.productivity or 1)
                 machine.first_product_count = 1
             end
             if previous_recipe ~= machine.recipe_name then
@@ -275,6 +310,54 @@ function Production.load_structure(factory, entities)
             end
         else
             factory.structure_change = true
+        end
+    end
+
+    if next(machines_with_temperature) then
+        local replace_map = {}
+        for product_name, product_list in pairs(products_with_temperature) do
+            for _, pt in pairs(product_list) do
+                local it_list = ingredients_with_temperature[product_name]
+
+                if it_list then
+                    local temperature = pt.temperature
+                    local name = pt.name
+                    for _, it in pairs(it_list) do
+                        if it.minimum_temperature and temperature < it.minimum_temperature then
+                            goto skip
+                        end
+                        if it.maximum_temperature and temperature > it.maximum_temperature then
+                            goto skip
+                        end
+                        replace_map[name] = it.name
+                        break
+                        ::skip::
+                    end
+                end
+            end
+        end
+        if next(replace_map) then
+            for old_name, new_name in pairs(replace_map) do
+                for _, machine in pairs(machines_with_temperature) do
+                    ---@cast machine Machine
+                    local input = machine.ingredients[old_name]
+                    if input then
+                        machine.ingredients[new_name] = input
+                        machine.ingredients[old_name] = nil
+                    end
+                    local output = machine.products[old_name]
+                    if output then
+                        machine.products[new_name] = output
+                        machine.products[old_name] = nil
+                    end
+
+                    local prod = product_map[old_name]
+                    if prod then
+                        product_map[new_name] = (product_map[new_name] or 0) + prod
+                        product_map[old_name] = nil
+                    end
+                end
+            end
         end
     end
 
@@ -681,7 +764,7 @@ function Production.solve(factory)
         local new_var_names = {}
         for i = 1, #equations do
             local eq = equations[i]
-            if table_size(eq) > 1 then
+            if table_size(eq) > 1 and eq_var_names[i] then
                 table.insert(new_equations, eq)
                 table.insert(new_var_names, eq_var_names[i])
             end
