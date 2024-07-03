@@ -80,19 +80,23 @@ function Production.load_structure(factory, entities)
                 local recipe = entity.get_recipe() or (entity.type == "furnace" and entity.previous_recipe)
                 machine.theorical_craft_s = 0
                 if recipe then
-                    machine.theorical_craft_s =
-                        ((120 / recipe.energy) * entity.crafting_speed) / 120
+
+                    if #recipe.products == 1 then
+                        local product = recipe.products[1]
+                        if product.probability == 0 then
+                            goto skip_voider
+                        end
+                    end
+
+                    machine.theorical_craft_s = ((120 / recipe.energy) * entity.crafting_speed) / 120
                     machine.recipe_name = recipe.name
                     machine.on_limit60 = machine.theorical_craft_s > 60
 
                     local productivity_bonus = entity.productivity_bonus
                     machine.productivity = productivity_bonus + 1
 
-                    local limited_craft_s = math.min(60,
-                        machine.theorical_craft_s)
-                    machine.produced_craft_s =
-                        limited_craft_s + productivity_bonus *
-                        machine.theorical_craft_s
+                    local limited_craft_s = math.min(60, machine.theorical_craft_s)
+                    machine.produced_craft_s = limited_craft_s + productivity_bonus * machine.theorical_craft_s
 
                     local ingredients = {}
                     machine.ingredients_info = {}
@@ -150,10 +154,7 @@ function Production.load_structure(factory, entities)
                     for _, product in ipairs(recipe.products) do
                         local probability = (product.probability or 1)
 
-                        local amount = product.amount or
-                            ((product.amount_max +
-                                product.amount_min) / 2)
-
+                        local amount = product.amount or ((product.amount_max + product.amount_min) / 2)
                         local catalyst_amount = product.catalyst_amount or 0
                         local total
                         if catalyst_amount > 0 then
@@ -204,6 +205,7 @@ function Production.load_structure(factory, entities)
                 end
                 machine.energy_usage = entity.prototype.energy_usage
                 machine.reqenergy = machine.energy_usage * (1 + entity.consumption_bonus)
+                ::skip_voider::
             elseif machine.type == "mining-drill" then
                 local prototype = entity.prototype
                 local productivity_bonus = entity.productivity_bonus
@@ -295,9 +297,7 @@ function Production.load_structure(factory, entities)
                 end
 
                 if (machine.product_infos and #machine.product_infos > 0) then
-                    machine.recipe_name =
-                        machine.product_infos[1].type .. "/" ..
-                        machine.product_infos[1].name
+                    machine.recipe_name = machine.product_infos[1].type .. "/" .. machine.product_infos[1].name
                 end
 
                 machine.energy_usage = entity.prototype.energy_usage
@@ -480,8 +480,7 @@ function Production.compute_production(factory, full)
                     local recipe = entity.get_recipe() or (entity.type == "furnace" and entity.previous_recipe)
                     if recipe then
                         local ingredients = recipe.ingredients
-                        local inv = entity.get_inventory(defines.inventory
-                            .assembling_machine_input)
+                        local inv = entity.get_inventory(defines.inventory.assembling_machine_input)
                         ---@cast inv -nil
                         local index = 1
                         for _, ingredient in pairs(ingredients) do
@@ -685,16 +684,12 @@ function Production.solve(factory)
             end
             for ingredient_name, count in pairs(machine.ingredients) do
                 local product = get_product(ingredient_name)
-                product.equations[recipe_name] =
-                    (product.equations[recipe_name] or 0) -
-                    machine.theorical_craft_s * count
+                product.equations[recipe_name] = (product.equations[recipe_name] or 0) - machine.theorical_craft_s * count
                 product.input = true
             end
             for product_name, count in pairs(machine.products) do
                 local product = get_product(product_name)
-                product.equations[recipe_name] =
-                    (product.equations[recipe_name] or 0) +
-                    machine.produced_craft_s * count
+                product.equations[recipe_name] = (product.equations[recipe_name] or 0) + machine.produced_craft_s * count
                 product.output = true
                 product.recipes[recipe_name] = true
             end
