@@ -80,7 +80,6 @@ function Production.load_structure(factory, entities)
                 local recipe = entity.get_recipe() or (entity.type == "furnace" and entity.previous_recipe)
                 machine.theorical_craft_s = 0
                 if recipe then
-
                     if #recipe.products == 1 then
                         local product = recipe.products[1]
                         if product.probability == 0 then
@@ -187,13 +186,23 @@ function Production.load_structure(factory, entities)
                             end
                         end
 
-                        products[product_name] = amount
-                        table.insert(machine.product_infos, {
-                            name = product.name,
-                            type = product.type,
-                            amount = amount,
-                            temperature = temperature
-                        })
+                        if not products[product_name] then
+                            products[product_name] = amount
+                            table.insert(machine.product_infos, {
+                                name = product.name,
+                                type = product.type,
+                                amount = amount,
+                                temperature = temperature
+                            })
+                        else
+                            products[product_name] = products[product_name] + amount
+                            local name = product.name
+                            for _, product_info in pairs(machine.product_infos) do
+                                if product_info.name == name and product_info.temperature == temperature then
+                                    product_info.amount = product_info.amount + amount
+                                end
+                            end
+                        end
 
                         local old_count = product_map[product_name] or 0
                         product_map[product_name] = old_count + machine.produced_craft_s * amount
