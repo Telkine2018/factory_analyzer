@@ -693,7 +693,8 @@ function Production.solve(factory)
             end
             for ingredient_name, count in pairs(machine.ingredients) do
                 local product = get_product(ingredient_name)
-                product.equations[recipe_name] = (product.equations[recipe_name] or 0) - machine.theorical_craft_s * count
+                product.equations[recipe_name] = (product.equations[recipe_name] or 0) -
+                machine.theorical_craft_s * count
                 product.input = true
             end
             for product_name, count in pairs(machine.products) do
@@ -707,6 +708,7 @@ function Production.solve(factory)
 
     ---@type table<string, number>[]
     local equations = {}
+    local product_names = {}
 
     for _, product in pairs(products) do
         if product.output then
@@ -714,6 +716,7 @@ function Production.solve(factory)
                 if table_size(product.equations) > 1 and
                     not factory.free_products[product.name] then
                     table.insert(equations, product.equations)
+                    table.insert(product_names, product.name)
                 end
             end
         end
@@ -731,7 +734,7 @@ function Production.solve(factory)
             local pivot_eq = equations[i]
 
             -- find pivot
-            local pivot_var, pivot_value, rank_min
+            local pivot_var, pivot_value
             for var_name, value in pairs(pivot_eq) do
                 if value ~= 0 and not name_map[var_name] then
                     if not pivot_value then
@@ -768,7 +771,7 @@ function Production.solve(factory)
         local new_var_names = {}
         for i = 1, #equations do
             local eq = equations[i]
-            if table_size(eq) > 1 and eq_var_names[i] then
+            if table_size(eq) > 0 and eq_var_names[i] then
                 table.insert(new_equations, eq)
                 table.insert(new_var_names, eq_var_names[i])
             end
@@ -781,66 +784,80 @@ function Production.solve(factory)
         for i = #equations, 1, -1 do
             local eq = equations[i]
 
-            local var = eq_var_names[i]
-            local value = 0
-            for n, v in pairs(eq) do
-                if n ~= var then
-                    local var_value = var_values[n]
-                    if var_value then
-                        value = value - var_value * v
+            if table_size(eq) == 1 then
+                for n, v in pairs(eq) do
+                    if not var_values[n] then
+                        var_values[n] = 0
+                    elseif var_values[n] ~= 0 then
+                        need_pass2 = true
                     end
                 end
-            end
-            for n, v in pairs(eq) do
-                if n ~= var then
-                    local var_value = var_values[n]
-                    if not var_value then
-                        if v > 0 then
-                            local limit = value / v
-                            if limit > 1 then
-                                var_value = 1
-                            else
-                                var_value = limit
-                            end
-                        else
-                            var_value = 1
-                        end
-                        var_values[n] = var_value
-                        value = value - var_value * v
-                    end
-                end
-            end
-            if value < 0 and value > -0.00001 then
-                value = 0
-            end
-            var_values[var] = value
-            if value > 1 then
-                local to_change = { [var] = true }
-                local need_process = true
 
-                while need_process do
-                    need_process = false
-                    for j = i, #equations do
-                        for name, _ in pairs(equations[j]) do
-                            if not to_change[name] then
-                                to_change[name] = true
-                                need_process = true
-                            end
+            else
+                local var = eq_var_names[i]
+                local value = 0
+                for n, v in pairs(eq) do
+                    if n ~= var then
+                        local var_value = var_values[n]
+                        if var_value then
+                            value = value - var_value * v
                         end
                     end
                 end
-                for name, _ in pairs(to_change) do
-                    var_values[name] = var_values[name] / value
+                for n, v in pairs(eq) do
+                    if n ~= var then
+                        local var_value = var_values[n]
+                        if not var_value then
+                            if v > 0 then
+                                local limit = value / v
+                                if limit > 1 then
+                                    var_value = 1
+                                elseif math.abs(limit) >= 0.00001 then
+                                    var_value = limit
+                                else
+                                    var_value = 0
+                                end
+                            else
+                                var_value = 1
+                            end
+                            var_values[n] = var_value
+                            value = value - var_value * v
+                        end
+                    end
                 end
-            elseif value < 0 then
-                need_pass2 = true
-                for k = i, #equations - 1 do
-                    equations[k] = equations[k + 1]
-                    eq_var_names[k] = eq_var_names[k + 1]
+                ::skip::
+                if value < 0 and value > -0.00001 then
+                    value = 0
                 end
-                equations[#equations] = eq
-                eq_var_names[#equations] = var
-                break
+                var_values[var] = value
+                if value > 1 then
+                    local to_change = { [var] = true }
+                    local need_process = true
+
+                    while need_process do
+                        need_process = false
+                        for j = i, #equations do
+                            for name, _ in pairs(equations[j]) do
+                                if not to_change[name] then
+                                    to_change[name] = true
+                                    need_process = true
+                                end
+                            end
+                        end
+                    end
+                    for name, _ in pairs(to_change) do
+                        var_values[name] = var_values[name] / value
+                    end
+                elseif value < 0 then
+                    need_pass2 = true
+                    for k = i, #equations - 1 do
+                        equations[k] = equations[k + 1]
+                        eq_var_names[k] = eq_var_names[k + 1]
+                    end
+                    equations[#equations] = eq
+                    eq_var_names[#equations] = var
+                    break
+                end
             end
         end
 
@@ -856,10 +873,12 @@ function Production.solve(factory)
                     local usage = var_values[recipe_name]
                     if usage then machine.usage = usage end
                     for ingredient, count in pairs(machine.ingredients) do
-                        ingredient_map[ingredient] = (ingredient_map[ingredient] or 0) + count * machine.theorical_craft_s * machine.usage
+                        ingredient_map[ingredient] = (ingredient_map[ingredient] or 0) +
+                        count * machine.theorical_craft_s * machine.usage
                     end
                     for product, count in pairs(machine.products) do
-                        product_map[product] = (product_map[product] or 0) + count * machine.produced_craft_s * machine.usage
+                        product_map[product] = (product_map[product] or 0) +
+                        count * machine.produced_craft_s * machine.usage
                     end
                 end
             end
