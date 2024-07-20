@@ -34,9 +34,10 @@ function Summary.create(factory, inner_frame)
         name = "title_table"
     }
 
+    local has4 = not (onlytheoric) or solver  
     inner_frame.tags = {mode = "global"}
 
-    if not (onlytheoric) or solver then
+    if has4 then
         element = info_table.add {type = "label"}
         element.style.minimal_width = 30
 
@@ -48,7 +49,7 @@ function Summary.create(factory, inner_frame)
     local summary_table = inner_frame.add {
         type = "table",
         direction = "vertical",
-        column_count = 3 + ((solver or not onlytheoric) and 1 or 0),
+        column_count = 3 + (has4 and 1 or 0),
         name = "summary_table"
     }
     summary_table.vertical_centering = false
@@ -73,7 +74,7 @@ function Summary.create(factory, inner_frame)
 
     add_label("produced_rate")
     add_label("consumed_rate")
-    if not (onlytheoric) or solver then add_label("usage", usage_w) end
+    if has4 then add_label("usage", usage_w) end
 
     local function add_empty_slot(name)
         local flow = summary_table.add {
@@ -179,9 +180,20 @@ function Summary.create(factory, inner_frame)
             add_slot(p)
         end
     end
+
+    local function table_sep()
+        summary_table.add { type="line"}
+        summary_table.add { type="line"}
+        summary_table.add { type="line"}
+        if has4 then
+            summary_table.add { type="line"}
+        end
+    end
     
     table_inject(produced)
+    table_sep()
     table_inject(intermediates)
+    table_sep()
     table_inject(consumed)
 end
 
