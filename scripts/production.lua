@@ -5,6 +5,8 @@ local Production = {}
 
 local production_update_rate = 120
 
+local use_temperature = false
+
 ---@param factory Factory
 ---@param entity LuaEntity
 ---@return Machine
@@ -105,7 +107,7 @@ function Production.load_structure(factory, entities)
                         local product_name = type .. "/" .. ingredient.name
                         local maximum_temperature
                         local minimum_temperature
-                        if type == "fluid" then
+                        if use_temperature and type == "fluid" then
                             ---@diagnostic disable-next-line: undefined-field
                             maximum_temperature = ingredient.maximum_temperature
                             ---@diagnostic disable-next-line: undefined-field
@@ -168,7 +170,7 @@ function Production.load_structure(factory, entities)
 
                         local product_name = product.type .. "/" .. product.name
                         local temperature
-                        if product.type == "fluid" then
+                        if use_temperature  and product.type == "fluid" then
                             ---@diagnostic disable-next-line: undefined-field
                             temperature = product.temperature
                             if temperature then
