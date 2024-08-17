@@ -8,7 +8,7 @@ local commons = {
     prefix = prefix,
     modpath = modpath,
     graphic_path = modpath .. '/graphics/%s.png',
-    period_values = {2 * 60, 5 * 60, 10 * 60, 30 * 60, 60 * 60, 0},
+    period_values = { 2 * 60, 5 * 60, 10 * 60, 30 * 60, 60 * 60, 0 },
 
     name_w = 150,
     value_w = 120,
@@ -24,20 +24,53 @@ local commons = {
 ---@return string
 function commons.png(name) return (commons.graphic_path):format(name) end
 
+---@param name string
+---@return string
+function commons.get_sprite_name(name)
+    local index = string.find(name, "@", 1, true)
+    if index then
+        name = string.sub(name, 1, index - 1)
+    end
+    return name
+end
+
 ---@param product string
 ---@return any
 ---@return SignalID
+---@return any
 function commons.get_product_name(product)
     local signal = tools.sprite_to_signal(product)
     ---@cast signal -nil
 
+    ---@type LocalisedString
     local label = ""
+    local name = signal.name
+    local proto
     if signal.type == "item" then
-        label = game.item_prototypes[signal.name].localised_name
+        proto = game.item_prototypes[name]
+        label = proto.localised_name
     elseif signal.type == "fluid" then
-        label = game.fluid_prototypes[signal.name].localised_name
+        proto = game.fluid_prototypes[name]
+        if proto then
+            label = proto.localised_name
+        else
+            local index = string.find(name, "@", 1, true)
+            if index then
+                name = string.sub(name, 1, index - 1)
+                proto = game.fluid_prototypes[name]
+                if proto then
+                    local temperature_label = string.sub(signal.name, index + 1)
+                    temperature_label = string.gsub(temperature_label, "@", "-")
+                    label = { "", proto.localised_name, "(" .. temperature_label .. ")" }
+                else
+                    label = name .. "(" .. string.sub(signal.name, index + 1) .. ")"
+                end
+            else
+                label = name
+            end
+        end
     end
-    return label, signal
+    return label, signal, proto
 end
 
 function commons.set_element_values(element, real, theorical)
@@ -66,13 +99,13 @@ function commons.set_element_values(element, real, theorical)
     local sreal = string.format("%.2f", real)
     local ratio = real / theorical
     if ratio == 0 then
-        freal.style.font_color = {1, 0, 0, 1}
+        freal.style.font_color = { 1, 0, 0, 1 }
     elseif ratio > 0.95 then
-        freal.style.font_color = {0, 1, 0, 1}
+        freal.style.font_color = { 0, 1, 0, 1 }
     elseif ratio > 0.5 then
-        freal.style.font_color = {1, 1, 1, 1}
+        freal.style.font_color = { 1, 1, 1, 1 }
     else
-        freal.style.font_color = {1, 1, 0, 1}
+        freal.style.font_color = { 1, 1, 0, 1 }
     end
     freal.caption = sreal
     fsep.caption = "/"
@@ -87,7 +120,7 @@ function commons.get_consumed_numbers(machine, product)
     if t_consume_base then
         local theorical = t_consume_base * machine.theorical_craft_s
         local real = t_consume_base * machine.craft_per_s /
-                         machine.produced_craft_s * machine.theorical_craft_s
+            machine.produced_craft_s * machine.theorical_craft_s
         return real, theorical
     else
         return 0, 0

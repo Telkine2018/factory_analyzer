@@ -112,7 +112,7 @@ function ProductPanel.create(inner_frame, factory, product)
 
         local button = recipe_flow.add {
             type = "sprite-button",
-            sprite = product,
+            sprite = commons.get_sprite_name(product),
             style = prefix .. "_button_default",
             name = product .. "/" .. type
         }
@@ -270,26 +270,21 @@ function ProductPanel.update(inner_frame, factory)
                 machine.previous_missing_product = machine.missing_product
             elseif machine.previous_missing_product then
                 local recipe_flow = product_table["recipe_flow_" .. machine.id]
-                local button = recipe_flow[machine.previous_missing_product ..
-                                   "/consumed"]
+                local button = recipe_flow[machine.previous_missing_product .. "/consumed"]
                 button.style = prefix .. "_button_default"
                 machine.previous_missing_product = nil
             end
 
             if machine.full_output_product then
                 local recipe_flow = product_table["recipe_flow_" .. machine.id]
-                local button = recipe_flow[machine.full_output_product ..
-                                   "/produced"]
+                local button = recipe_flow[machine.full_output_product .. "/produced"]
                 if button then
                     button.style = prefix .. "_button_missing"
                 end
-                machine.previous_full_output_product =
-                    machine.full_output_product
+                machine.previous_full_output_product = machine.full_output_product
             elseif machine.previous_full_output_product then
                 local recipe_flow = product_table["recipe_flow_" .. machine.id]
-                local button =
-                    recipe_flow[machine.previous_full_output_product ..
-                        "/produced"]
+                local button = recipe_flow[machine.previous_full_output_product .. "/produced"]
                 button.style = prefix .. "_button_default"
                 machine.previous_full_output_product = nil
             end

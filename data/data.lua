@@ -80,8 +80,15 @@ local green_arrow = {
     height = 64
 }
 
+local graph_icon = {
+    type = "sprite",
+    name = prefix .. "-graph",
+    filename = png("icons/graph"),
+    width = 40,
+    height = 40
+}
 
-data:extend{selection_tool, shortcut, global_icon, failure_icon, unlink_icon, green_arrow}
+data:extend{selection_tool, shortcut, global_icon, failure_icon, unlink_icon, green_arrow, graph_icon}
 
 local styles = data.raw["gui-style"].default
 
