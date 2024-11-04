@@ -127,7 +127,7 @@ function ProductPanel.create(inner_frame, factory, product)
 
     for _, machine in pairs(machines) do
 
-        local proto = game.entity_prototypes[machine.name]
+        local proto = prototypes.entity[machine.name]
         local item = proto.items_to_place_this[1].name
         local label_flow = product_panel.add {
             type = "flow",

@@ -81,7 +81,7 @@ function Production.load_structure(factory, entities)
             if machine.type == "assembling-machine" or machine.type == "furnace" then
                 local recipe = entity.get_recipe() or (entity.type == "furnace" and entity.previous_recipe)
                 machine.theorical_craft_s = 0
-                if recipe then
+                if recipe and recipe.products then
                     if #recipe.products == 1 then
                         local product = recipe.products[1]
                         if product.probability == 0 then
@@ -96,7 +96,7 @@ function Production.load_structure(factory, entities)
                     local productivity_bonus = entity.productivity_bonus
                     machine.productivity = productivity_bonus + 1
 
-                    local limited_craft_s = math.min(60, machine.theorical_craft_s)
+                    local limited_craft_s = machine.theorical_craft_s
                     machine.produced_craft_s = limited_craft_s + productivity_bonus * machine.theorical_craft_s
 
                     local ingredients = {}
@@ -156,21 +156,13 @@ function Production.load_structure(factory, entities)
                         local probability = (product.probability or 1)
 
                         local amount = product.amount or ((product.amount_max + product.amount_min) / 2)
-                        local catalyst_amount = product.catalyst_amount or 0
                         local total
-                        if catalyst_amount > 0 then
-                            total = (amount * limited_craft_s +
-                                math.max(0, amount - catalyst_amount) * productivity_bonus * machine.theorical_craft_s
-                            ) * probability
-                        else
-                            total = (amount * limited_craft_s + amount *
-                                productivity_bonus * machine.theorical_craft_s) * probability
-                        end
+                        total = (amount * limited_craft_s + amount * productivity_bonus * machine.theorical_craft_s) * probability
                         amount = total / machine.produced_craft_s
 
                         local product_name = product.type .. "/" .. product.name
                         local temperature
-                        if use_temperature  and product.type == "fluid" then
+                        if use_temperature and product.type == "fluid" then
                             ---@diagnostic disable-next-line: undefined-field
                             temperature = product.temperature
                             if temperature then
@@ -541,7 +533,7 @@ function Production.compute_production(factory, full)
                                 if not amount then
                                     amount = (product.amount_min + product.amount_max) / 2
                                 end
-                                if count > 0 and (count >= 4 * amount or count >= game.item_prototypes[product.name].stack_size) then
+                                if count > 0 and (count >= 4 * amount or count >= prototypes.item[product.name].stack_size) then
                                     machine.full_output_product = "item/" .. product.name
                                     break
                                 end
@@ -696,7 +688,7 @@ function Production.solve(factory)
             for ingredient_name, count in pairs(machine.ingredients) do
                 local product = get_product(ingredient_name)
                 product.equations[recipe_name] = (product.equations[recipe_name] or 0) -
-                machine.theorical_craft_s * count
+                    machine.theorical_craft_s * count
                 product.input = true
             end
             for product_name, count in pairs(machine.products) do
@@ -794,7 +786,6 @@ function Production.solve(factory)
                         need_pass2 = true
                     end
                 end
-
             else
                 local var = eq_var_names[i]
                 local value = 0
@@ -876,11 +867,11 @@ function Production.solve(factory)
                     if usage then machine.usage = usage end
                     for ingredient, count in pairs(machine.ingredients) do
                         ingredient_map[ingredient] = (ingredient_map[ingredient] or 0) +
-                        count * machine.theorical_craft_s * machine.usage
+                            count * machine.theorical_craft_s * machine.usage
                     end
                     for product, count in pairs(machine.products) do
                         product_map[product] = (product_map[product] or 0) +
-                        count * machine.produced_craft_s * machine.usage
+                            count * machine.produced_craft_s * machine.usage
                     end
                 end
             end

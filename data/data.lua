@@ -9,19 +9,26 @@ local selection_tool = {
     name = prefix .. "-selection_tool",
     icon = png("icons/selection-tool"),
     icon_size = 32,
-    selection_color = {r = 0, g = 0, b = 1},
-    alt_selection_color = {r = 1, g = 0, b = 0},
-    selection_mode = {"same-force", "any-entity"},
-    alt_selection_mode = {"same-force", "any-entity"},
-    selection_cursor_box_type = "entity",
-    alt_selection_cursor_box_type = "entity",
-    flags = {"hidden", "not-stackable", "only-in-cursor", "spawnable"},
+
+
+    select = {
+        border_color = { r=0, g=0, b=1 },
+        cursor_box_type = "entity",
+        mode = {"same-force", "any-entity" },
+        entity_type_filters = {"assembling-machine", "furnace", "mining-drill"}
+    },
+    
+    alt_select = {
+        border_color = { r=0, g=0, b=1 },
+        cursor_box_type = "entity",
+        mode = {"same-force", "any-entity" },
+        alt_entity_type_filters = {"assembling-machine", "furnace", "mining-drill"}
+    },
+    
+    flags = { "not-stackable", "only-in-cursor", "spawnable"},
     subgroup = "other",
     stack_size = 1,
-    stackable = false,
-    show_in_library = false,
-    entity_type_filters = {"assembling-machine", "furnace", "mining-drill"},
-    alt_entity_type_filters = {"assembling-machine", "furnace", "mining-drill"}
+    stackable = false
 }
 
 local shortcut = {
@@ -29,20 +36,10 @@ local shortcut = {
     name = prefix .. "-tool",
     order = "-aaa",
     action = "lua",
-    icon = {
-        filename = png("icons/tool-x32"),
-        priority = "extra-high-no-scale",
-        size = 32,
-        scale = 1,
-        flags = {"gui-icon"}
-    },
-    small_icon = {
-        filename = png("icons/tool-x24"),
-        priority = "extra-high-no-scale",
-        size = 24,
-        scale = 1,
-        flags = {"gui-icon"}
-    }
+    icon = png("icons/tool-x32"),
+    icon_size = 32,
+    small_icon  = png("icons/tool-x24"),
+    small_icon_size = 24
 }
 
 local global_icon = {

@@ -47,17 +47,17 @@ function commons.get_product_name(product)
     local name = signal.name
     local proto
     if signal.type == "item" then
-        proto = game.item_prototypes[name]
+        proto = prototypes.item[name]
         label = proto.localised_name
     elseif signal.type == "fluid" then
-        proto = game.fluid_prototypes[name]
+        proto = prototypes.fluid[name]
         if proto then
             label = proto.localised_name
         else
             local index = string.find(name, "@", 1, true)
             if index then
                 name = string.sub(name, 1, index - 1)
-                proto = game.fluid_prototypes[name]
+                proto = prototypes.fluid[name]
                 if proto then
                     local temperature_label = string.sub(signal.name, index + 1)
                     temperature_label = string.gsub(temperature_label, "@", "-")
