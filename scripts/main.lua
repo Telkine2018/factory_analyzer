@@ -478,11 +478,9 @@ function Analyzer.show_selected_machine(player, entity)
     vars.selected_id = entity.unit_number
     vars.selected_machine = rendering.draw_rectangle {
         surface = entity.surface,
-        left_top = entity,
-        right_bottom = entity,
+        left_top = { entity = entity, offset = { -w / 2, -h / 2 } },
+        right_bottom = { entity = entity, offset = { w / 2, h / 2 } },
         width = 3,
-        left_top_offset = { -w / 2, -h / 2 },
-        right_bottom_offset = { w / 2, h / 2 },
         color = { 0, 1, 0, 1 }
     }
     vars.selected_entity = entity
@@ -869,7 +867,7 @@ tools.on_named_event(prefix .. ".bgraph", defines.events.on_gui_click,
         local recipes = {}
         for _, machine in pairs(factory.machines) do
             local name = machine.recipe_name
-            local recipe = {name=name}
+            local recipe = { name = name }
             recipes[name] = recipe
         end
         config.recipes = recipes
