@@ -183,7 +183,7 @@ function Analyzer.create_frame(player, factory)
         name = "solver-failure",
         tooltip = { prefix .. ".solver_failure_tooltip" }
     }
-    solver_failure_sprite.visible = factory.solver_failure
+    solver_failure_sprite.visible = factory.solver_failure == true
 
     cb = command_flow2.add {
         type = "checkbox",
@@ -610,7 +610,7 @@ function Analyzer.update_inner_panel(player, factory)
     end
 
     local solver_failure_sprite = tools.get_child(frame, "solver-failure")
-    solver_failure_sprite.visible = factory.solver_failure
+    solver_failure_sprite.visible = factory.solver_failure == true
 
     Entities.update(factory)
 end
