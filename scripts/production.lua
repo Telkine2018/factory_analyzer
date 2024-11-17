@@ -31,6 +31,21 @@ local transport_drone_prefix = "transport-drones"
 
 local black_list_subgroups = { ["transport-drones"] = true }
 
+---@param entity LuaEntity
+---@return LuaRecipe?
+local function get_recipe(entity)
+    local recipe = entity.get_recipe() 
+    if not recipe and entity.type == "furnace"then
+        local precipe = entity.previous_recipe
+        if precipe then
+            recipe = precipe.name
+        end
+    end
+    return recipe
+end
+
+Production.get_recipe = get_recipe
+
 ---@param factory Factory
 ---@param entities LuaEntity[]?
 function Production.load_structure(factory, entities)
@@ -79,7 +94,7 @@ function Production.load_structure(factory, entities)
             local previous_recipe = machine.recipe_name
             machine.recipe_name = nil
             if machine.type == "assembling-machine" or machine.type == "furnace" then
-                local recipe = entity.get_recipe() or (entity.type == "furnace" and entity.previous_recipe)
+                local recipe = get_recipe(entity)
                 machine.theorical_craft_s = 0
                 if recipe and recipe.products then
                     if #recipe.products == 1 then
@@ -480,7 +495,7 @@ function Production.compute_production(factory, full)
                 machine.missing_product = nil
                 machine.full_output_product = nil
                 if status == defines.entity_status.item_ingredient_shortage or status == defines.entity_status.no_ingredients then
-                    local recipe = entity.get_recipe() or (entity.type == "furnace" and entity.previous_recipe)
+                    local recipe = get_recipe(entity)
                     if recipe then
                         local ingredients = recipe.ingredients
                         local inv = entity.get_inventory(defines.inventory.assembling_machine_input)
@@ -498,7 +513,7 @@ function Production.compute_production(factory, full)
                         end
                     end
                 elseif status == defines.entity_status.no_input_fluid or status == defines.entity_status.fluid_ingredient_shortage then
-                    local recipe = entity.get_recipe() or (entity.type == "furnace" and entity.previous_recipe)
+                    local recipe = get_recipe(entity)
                     if recipe then
                         local ingredients = recipe.ingredients
                         local index = 1
@@ -516,9 +531,7 @@ function Production.compute_production(factory, full)
                         end
                     end
                 elseif status == defines.entity_status.full_output then
-                    local recipe = entity.get_recipe() or
-                        (entity.type == "furnace" and
-                            entity.previous_recipe)
+                    local recipe = get_recipe(entity)
                     if recipe then
                         local output_inv = entity.get_output_inventory()
                         ---@cast output_inv -nil
