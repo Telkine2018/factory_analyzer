@@ -109,6 +109,9 @@ function Production.load_structure(factory, entities)
                     machine.on_limit60 = machine.theorical_craft_s > 60
 
                     local productivity_bonus = entity.productivity_bonus
+                    if machine.type == "assembling-machine" then
+                        productivity_bonus = productivity_bonus + recipe.productivity_bonus
+                    end
                     machine.productivity = productivity_bonus + 1
 
                     local limited_craft_s = machine.theorical_craft_s
@@ -486,7 +489,8 @@ function Production.compute_production(factory, full)
                 local prev_bonus_progress = machine.bonus_progress or 0
                 if previous_tick then
                     if machine.products_finished then
-                        craft_per_s = (crafting_progress - machine.crafting_progress + (bonus_progress - prev_bonus_progress) +
+                        craft_per_s = (crafting_progress - machine.crafting_progress +
+                            (bonus_progress - prev_bonus_progress) +
                             (products_finished - machine.products_finished))
                         craft_per_s = 60.0 * craft_per_s / (current_tick - previous_tick)
                     end
@@ -593,13 +597,9 @@ function Production.compute_production(factory, full)
                     end
                 end
 
-                machine.reqenergy = entity.prototype.energy_usage *
-                    (1 + entity.consumption_bonus)
-
-                local usage = math.min(machine.reqenergy, energy) /
-                    machine.reqenergy
-                craft_per_s = machine.theorical_craft_s * machine.productivity *
-                    usage
+                machine.reqenergy = entity.prototype.energy_usage * (1 + entity.consumption_bonus)
+                local usage = math.min(machine.reqenergy, energy) / machine.reqenergy
+                craft_per_s = machine.theorical_craft_s * machine.productivity * usage
             end
             machine.craft_per_s = craft_per_s
             if machine.products then
