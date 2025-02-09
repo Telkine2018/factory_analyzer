@@ -84,7 +84,7 @@ function Analyzer.create_frame(player, factory)
         tooltip = { prefix .. ".close_tooltip" },
         style = "frame_action_button",
         mouse_button_filter = { "left" },
-        sprite = "utility/close_white",
+        sprite = "utility/close",
         hovered_sprite = "utility/close_black"
     }
 
@@ -183,7 +183,7 @@ function Analyzer.create_frame(player, factory)
         name = "solver-failure",
         tooltip = { prefix .. ".solver_failure_tooltip" }
     }
-    solver_failure_sprite.visible = factory.solver_failure
+    solver_failure_sprite.visible = factory.solver_failure == true
 
     cb = command_flow2.add {
         type = "checkbox",
@@ -416,7 +416,7 @@ tools.on_gui_click(prefix .. ".global_button",
 
 function Analyzer.clear_arrow(vars)
     if vars.selected_arrow then
-        rendering.destroy(vars.selected_arrow)
+        vars.selected_arrow.destroy()
         vars.selected_arrow = nil
         vars.selected_entity = nil
     end
@@ -425,7 +425,7 @@ end
 function Analyzer.clear_selected_machine(player)
     local vars = tools.get_vars(player)
     if vars.selected_machine then
-        rendering.destroy(vars.selected_machine)
+        vars.selected_machine.destroy()
         vars.selected_machine = nil
         vars.selected_id = nil
         Analyzer.clear_arrow(vars)
@@ -458,7 +458,7 @@ function Analyzer.show_arrow(player)
     local sprite_pos = { x = p1.x + len * unit.x, y = p1.y + len * unit.y }
 
     if vars.selected_arrow then
-        rendering.set_target(vars.selected_arrow, sprite_pos)
+        vars.selected_arrow.target = sprite_pos
     else
         vars.selected_arrow = rendering.draw_sprite {
             sprite = prefix .. "-green_arrow",
@@ -478,11 +478,9 @@ function Analyzer.show_selected_machine(player, entity)
     vars.selected_id = entity.unit_number
     vars.selected_machine = rendering.draw_rectangle {
         surface = entity.surface,
-        left_top = entity,
-        right_bottom = entity,
+        left_top = { entity = entity, offset = { -w / 2, -h / 2 } },
+        right_bottom = { entity = entity, offset = { w / 2, h / 2 } },
         width = 3,
-        left_top_offset = { -w / 2, -h / 2 },
-        right_bottom_offset = { w / 2, h / 2 },
         color = { 0, 1, 0, 1 }
     }
     vars.selected_entity = entity
@@ -511,7 +509,7 @@ tools.on_gui_click(prefix .. "_machine", ---@param e EventData.on_gui_click
         if not machine then return end
 
         if e.control then
-            if machine.text_id then rendering.destroy(machine.text_id) end
+            if machine.text_id then machine.text_id.destroy() end
             factory.machine_map[id] = nil
             factory.structure_change = true
             return
@@ -577,9 +575,9 @@ function Analyzer.update_inner_panel(player, factory)
                     else
                         first = false
                     end
-                    local recipe = game.recipe_prototypes[name]
+                    local recipe = prototypes.recipe[name]
                     if recipe then
-                        table.insert(msg, game.recipe_prototypes[name].localised_name)
+                        table.insert(msg, prototypes.recipe[name].localised_name)
                     end
                     count = count + 1
                     if count >= 8 then break end
@@ -612,7 +610,7 @@ function Analyzer.update_inner_panel(player, factory)
     end
 
     local solver_failure_sprite = tools.get_child(frame, "solver-failure")
-    solver_failure_sprite.visible = factory.solver_failure
+    solver_failure_sprite.visible = factory.solver_failure == true
 
     Entities.update(factory)
 end
@@ -724,7 +722,7 @@ end)
 
 ---@param e (EventData.on_built_entity | EventData.script_raised_built)
 local function on_build(e)
-    local entity = e.created_entity or e.entity
+    local entity = e.entity
     local player_index = e.player_index
 
     if not entity.valid then
@@ -869,7 +867,7 @@ tools.on_named_event(prefix .. ".bgraph", defines.events.on_gui_click,
         local recipes = {}
         for _, machine in pairs(factory.machines) do
             local name = machine.recipe_name
-            local recipe = {name=name}
+            local recipe = { name = name }
             recipes[name] = recipe
         end
         config.recipes = recipes
@@ -905,3 +903,10 @@ remote.add_interface("factory_analyzer", {
         return result
     end
 })
+
+tools.on_configuration_changed(function(data)
+    for _, player in pairs(game.players) do
+        Analyzer.close(player)
+    end
+end
+)

@@ -108,10 +108,10 @@ function Entities.update(factory)
                         use_rich_text = true
                     }
                 else
-                    rendering.set_text(machine.text_id, text)
+                    machine.text_id.text = text
                 end
             elseif machine.text_id then
-                rendering.destroy(machine.text_id)
+                machine.text_id.destroy()
                 machine.text_id = nil
             end
         end
@@ -120,11 +120,12 @@ end
 
 ---@param factory Factory
 function Entities.clear(factory)
-
     for _, machine in pairs(factory.machine_map) do
         if machine.entity.valid then
-            if machine.text_id then
-                rendering.destroy(machine.text_id)
+            if type(machine.text_id) == "number" then
+                rendering.get_object_by_id(machine.text_id --[[@as integer]]).destroy()
+            elseif machine.text_id then
+                machine.text_id.destroy()
                 machine.text_id = nil
             end
         end

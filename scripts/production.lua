@@ -31,6 +31,21 @@ local transport_drone_prefix = "transport-drones"
 
 local black_list_subgroups = { ["transport-drones"] = true }
 
+---@param entity LuaEntity
+---@return LuaRecipe?
+local function get_recipe(entity)
+    local recipe = entity.get_recipe() 
+    if not recipe and entity.type == "furnace"then
+        local precipe = entity.previous_recipe
+        if precipe then
+            recipe = precipe.name
+        end
+    end
+    return recipe
+end
+
+Production.get_recipe = get_recipe
+
 ---@param factory Factory
 ---@param entities LuaEntity[]?
 function Production.load_structure(factory, entities)
@@ -79,9 +94,9 @@ function Production.load_structure(factory, entities)
             local previous_recipe = machine.recipe_name
             machine.recipe_name = nil
             if machine.type == "assembling-machine" or machine.type == "furnace" then
-                local recipe = entity.get_recipe() or (entity.type == "furnace" and entity.previous_recipe)
+                local recipe = get_recipe(entity)
                 machine.theorical_craft_s = 0
-                if recipe then
+                if recipe and recipe.products then
                     if #recipe.products == 1 then
                         local product = recipe.products[1]
                         if product.probability == 0 then
@@ -94,9 +109,12 @@ function Production.load_structure(factory, entities)
                     machine.on_limit60 = machine.theorical_craft_s > 60
 
                     local productivity_bonus = entity.productivity_bonus
+                    if machine.type == "assembling-machine" then
+                        productivity_bonus = productivity_bonus + recipe.productivity_bonus
+                    end
                     machine.productivity = productivity_bonus + 1
 
-                    local limited_craft_s = math.min(60, machine.theorical_craft_s)
+                    local limited_craft_s = machine.theorical_craft_s
                     machine.produced_craft_s = limited_craft_s + productivity_bonus * machine.theorical_craft_s
 
                     local ingredients = {}
@@ -156,21 +174,13 @@ function Production.load_structure(factory, entities)
                         local probability = (product.probability or 1)
 
                         local amount = product.amount or ((product.amount_max + product.amount_min) / 2)
-                        local catalyst_amount = product.catalyst_amount or 0
                         local total
-                        if catalyst_amount > 0 then
-                            total = (amount * limited_craft_s +
-                                math.max(0, amount - catalyst_amount) * productivity_bonus * machine.theorical_craft_s
-                            ) * probability
-                        else
-                            total = (amount * limited_craft_s + amount *
-                                productivity_bonus * machine.theorical_craft_s) * probability
-                        end
+                        total = (amount * limited_craft_s + amount * productivity_bonus * machine.theorical_craft_s) * probability
                         amount = total / machine.produced_craft_s
 
                         local product_name = product.type .. "/" .. product.name
                         local temperature
-                        if use_temperature  and product.type == "fluid" then
+                        if use_temperature and product.type == "fluid" then
                             ---@diagnostic disable-next-line: undefined-field
                             temperature = product.temperature
                             if temperature then
@@ -479,7 +489,8 @@ function Production.compute_production(factory, full)
                 local prev_bonus_progress = machine.bonus_progress or 0
                 if previous_tick then
                     if machine.products_finished then
-                        craft_per_s = (crafting_progress - machine.crafting_progress + (bonus_progress - prev_bonus_progress) +
+                        craft_per_s = (crafting_progress - machine.crafting_progress +
+                            (bonus_progress - prev_bonus_progress) +
                             (products_finished - machine.products_finished))
                         craft_per_s = 60.0 * craft_per_s / (current_tick - previous_tick)
                     end
@@ -488,7 +499,7 @@ function Production.compute_production(factory, full)
                 machine.missing_product = nil
                 machine.full_output_product = nil
                 if status == defines.entity_status.item_ingredient_shortage or status == defines.entity_status.no_ingredients then
-                    local recipe = entity.get_recipe() or (entity.type == "furnace" and entity.previous_recipe)
+                    local recipe = get_recipe(entity)
                     if recipe then
                         local ingredients = recipe.ingredients
                         local inv = entity.get_inventory(defines.inventory.assembling_machine_input)
@@ -506,7 +517,7 @@ function Production.compute_production(factory, full)
                         end
                     end
                 elseif status == defines.entity_status.no_input_fluid or status == defines.entity_status.fluid_ingredient_shortage then
-                    local recipe = entity.get_recipe() or (entity.type == "furnace" and entity.previous_recipe)
+                    local recipe = get_recipe(entity)
                     if recipe then
                         local ingredients = recipe.ingredients
                         local index = 1
@@ -524,9 +535,7 @@ function Production.compute_production(factory, full)
                         end
                     end
                 elseif status == defines.entity_status.full_output then
-                    local recipe = entity.get_recipe() or
-                        (entity.type == "furnace" and
-                            entity.previous_recipe)
+                    local recipe = get_recipe(entity)
                     if recipe then
                         local output_inv = entity.get_output_inventory()
                         ---@cast output_inv -nil
@@ -541,7 +550,7 @@ function Production.compute_production(factory, full)
                                 if not amount then
                                     amount = (product.amount_min + product.amount_max) / 2
                                 end
-                                if count > 0 and (count >= 4 * amount or count >= game.item_prototypes[product.name].stack_size) then
+                                if count > 0 and (count >= 4 * amount or count >= prototypes.item[product.name].stack_size) then
                                     machine.full_output_product = "item/" .. product.name
                                     break
                                 end
@@ -588,13 +597,9 @@ function Production.compute_production(factory, full)
                     end
                 end
 
-                machine.reqenergy = entity.prototype.energy_usage *
-                    (1 + entity.consumption_bonus)
-
-                local usage = math.min(machine.reqenergy, energy) /
-                    machine.reqenergy
-                craft_per_s = machine.theorical_craft_s * machine.productivity *
-                    usage
+                machine.reqenergy = entity.prototype.energy_usage * (1 + entity.consumption_bonus)
+                local usage = math.min(machine.reqenergy, energy) / machine.reqenergy
+                craft_per_s = machine.theorical_craft_s * machine.productivity * usage
             end
             machine.craft_per_s = craft_per_s
             if machine.products then
@@ -696,7 +701,7 @@ function Production.solve(factory)
             for ingredient_name, count in pairs(machine.ingredients) do
                 local product = get_product(ingredient_name)
                 product.equations[recipe_name] = (product.equations[recipe_name] or 0) -
-                machine.theorical_craft_s * count
+                    machine.theorical_craft_s * count
                 product.input = true
             end
             for product_name, count in pairs(machine.products) do
@@ -794,7 +799,6 @@ function Production.solve(factory)
                         need_pass2 = true
                     end
                 end
-
             else
                 local var = eq_var_names[i]
                 local value = 0
@@ -876,11 +880,11 @@ function Production.solve(factory)
                     if usage then machine.usage = usage end
                     for ingredient, count in pairs(machine.ingredients) do
                         ingredient_map[ingredient] = (ingredient_map[ingredient] or 0) +
-                        count * machine.theorical_craft_s * machine.usage
+                            count * machine.theorical_craft_s * machine.usage
                     end
                     for product, count in pairs(machine.products) do
                         product_map[product] = (product_map[product] or 0) +
-                        count * machine.produced_craft_s * machine.usage
+                            count * machine.produced_craft_s * machine.usage
                     end
                 end
             end

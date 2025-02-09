@@ -41,7 +41,7 @@ local function on_shift_button2(e)
 
     local vars = tools.get_vars(player)
     if entity.type == "furnace" then
-        local recipe = entity.get_recipe() or entity.previous_recipe
+        local recipe = Production.get_recipe(entity)
         if recipe then
             local ingredients = recipe.ingredients
             if #ingredients >= 1 then

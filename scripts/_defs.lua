@@ -25,7 +25,7 @@ local tools = require("scripts.tools")
 ---@field full_output_product string            @ full output product 
 ---@field previous_full_output_product string   @ full output product 
 ---@field usage number
----@field text_id integer
+---@field text_id LuaRenderObject
 ---@field product_infos ProductInfo[]
 ---@field ingredients_info ProductInfo[]
 ---@field first_product_name string?
