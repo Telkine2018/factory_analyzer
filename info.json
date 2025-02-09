@@ -5,7 +5,7 @@
   "author": "Telkine2018",
   "contact": "",
   "homepage": "",
-  "description": "Analyze production of a set of machines in a factory",
+  "description": "Analyze production of a set of machines in a factory and compare theoritical and real production",
   "factorio_version": "2.0",
   "dependencies": [
 		"base >= 2.0.0" ,
