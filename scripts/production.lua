@@ -292,18 +292,19 @@ function Production.load_structure(factory, entities)
 
                     for _, resource_data in pairs(resources) do
                         local resource_multiplier = ((drill_multiplier / resource_data.mining_time) * (resource_data.occurrences / num_resource_entities))
+                        local product_per_second
+                        product_per_second =  resource_multiplier
+                        machine.theorical_craft_s = product_per_second
 
                         for _, product in pairs(resource_data.products) do
-                            local product_per_second
                             local amount = product.amount
                             if not amount then
                                 amount = (product.amount_max + product.amount_min) / 2
                             end
+                            amount =  amount * (product.probability or 1)
 
-                            product_per_second = amount * resource_multiplier
                             local name = product.type .. "/" .. product.name
-                            machine.theorical_craft_s = product_per_second
-                            machine.products[name] = 1
+                            machine.products[name] = amount
 
                             table.insert(machine.product_infos, {
                                 name = product.name,
@@ -312,7 +313,7 @@ function Production.load_structure(factory, entities)
                             })
 
                             local old_count = product_map[name] or 0
-                            product_map[name] = old_count + product_per_second * machine.productivity
+                            product_map[name] = old_count + amount * product_per_second * machine.productivity
                         end
                     end
                 end
