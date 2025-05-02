@@ -34,8 +34,8 @@ local black_list_subgroups = { ["transport-drones"] = true }
 ---@param entity LuaEntity
 ---@return LuaRecipe?
 local function get_recipe(entity)
-    local recipe = entity.get_recipe() 
-    if not recipe and entity.type == "furnace"then
+    local recipe = entity.get_recipe()
+    if not recipe and entity.type == "furnace" then
         local precipe = entity.previous_recipe
         if precipe then
             recipe = precipe.name
@@ -106,7 +106,6 @@ function Production.load_structure(factory, entities)
 
                     machine.theorical_craft_s = ((120 / recipe.energy) * entity.crafting_speed) / 120
                     machine.recipe_name = recipe.name
-                    machine.on_limit60 = machine.theorical_craft_s > 60
 
                     local productivity_bonus = entity.productivity_bonus
                     if machine.type == "assembling-machine" then
@@ -114,8 +113,8 @@ function Production.load_structure(factory, entities)
                     end
                     machine.productivity = productivity_bonus + 1
 
-                    local limited_craft_s = machine.theorical_craft_s
-                    machine.produced_craft_s = limited_craft_s + productivity_bonus * machine.theorical_craft_s
+                    local theorical_craft_s = machine.theorical_craft_s
+                    machine.produced_craft_s = theorical_craft_s + productivity_bonus * theorical_craft_s
 
                     local ingredients = {}
                     machine.ingredients_info = {}
@@ -175,7 +174,11 @@ function Production.load_structure(factory, entities)
 
                         local amount = product.amount or ((product.amount_max + product.amount_min) / 2)
                         local total
-                        total = (amount * limited_craft_s + amount * productivity_bonus * machine.theorical_craft_s) * probability
+                        if product.ignored_by_productivity then
+                            total = (amount + (amount - product.ignored_by_productivity) * productivity_bonus) * probability * theorical_craft_s
+                        else
+                            total = (1 + productivity_bonus) * probability * theorical_craft_s * amount
+                        end
                         amount = total / machine.produced_craft_s
 
                         local product_name = product.type .. "/" .. product.name
@@ -218,13 +221,7 @@ function Production.load_structure(factory, entities)
                         end
 
                         local old_count = product_map[product_name] or 0
-                        local pamount
-                        if product.ignored_by_productivity then
-                            pamount = (amount - product.ignored_by_productivity) * machine.produced_craft_s 
-                                + product.ignored_by_productivity * machine.theorical_craft_s
-                        else
-                            pamount = machine.produced_craft_s * amount
-                        end
+                        local pamount = machine.produced_craft_s * amount
                         product_map[product_name] = old_count + pamount
                     end
                     if #recipe.products <= 1 then
@@ -301,7 +298,7 @@ function Production.load_structure(factory, entities)
                     for _, resource_data in pairs(resources) do
                         local resource_multiplier = ((drill_multiplier / resource_data.mining_time) * (resource_data.occurrences / num_resource_entities))
                         local product_per_second
-                        product_per_second =  resource_multiplier
+                        product_per_second = resource_multiplier
                         machine.theorical_craft_s = product_per_second
 
                         for _, product in pairs(resource_data.products) do
@@ -309,7 +306,7 @@ function Production.load_structure(factory, entities)
                             if not amount then
                                 amount = (product.amount_max + product.amount_min) / 2
                             end
-                            amount =  amount * (product.probability or 1)
+                            amount = amount * (product.probability or 1)
 
                             local name = product.type .. "/" .. product.name
                             machine.products[name] = amount
@@ -615,14 +612,7 @@ function Production.compute_production(factory, full)
                 for _, info in pairs(machine.product_infos) do
                     local name = info.type .. "/" .. info.name
                     local count = machine.products[name]
-                    local amount
-                    if not info.ignored_by_productivity then
-                        amount = count * craft_per_s
-                    else
-                        amount = (count - info.ignored_by_productivity) * craft_per_s +
-                                info.ignored_by_productivity  * machine.theorical_craft_s
-                        machine.products[name] = amount / craft_per_s
-                    end
+                    local amount = count * craft_per_s
                     real_product_map[name] = (real_product_map[name] or 0) + amount
                 end
             end

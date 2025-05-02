@@ -14,7 +14,6 @@ local tools = require("scripts.tools")
 ---@field theorical_craft_s number              @ craft / s (theorical) without productivity
 ---@field produced_craft_s number               @ craft / s (theorical) include productivity
 ---@field recipe_name string
----@field on_limit60 boolean
 ---@field products_finished number
 ---@field crafting_progress number
 ---@field bonus_progress number
