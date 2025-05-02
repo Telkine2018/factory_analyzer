@@ -204,7 +204,8 @@ function Production.load_structure(factory, entities)
                                 name = product.name,
                                 type = product.type,
                                 amount = amount,
-                                temperature = temperature
+                                temperature = temperature,
+                                ignored_by_productivity = product.ignored_by_productivity
                             })
                         else
                             products[product_name] = products[product_name] + amount
@@ -217,7 +218,14 @@ function Production.load_structure(factory, entities)
                         end
 
                         local old_count = product_map[product_name] or 0
-                        product_map[product_name] = old_count + machine.produced_craft_s * amount
+                        local pamount
+                        if product.ignored_by_productivity then
+                            pamount = (amount - product.ignored_by_productivity) * machine.produced_craft_s 
+                                + product.ignored_by_productivity * machine.theorical_craft_s
+                        else
+                            pamount = machine.produced_craft_s * amount
+                        end
+                        product_map[product_name] = old_count + pamount
                     end
                     if #recipe.products <= 1 then
                         machine.first_product_name = nil
@@ -544,7 +552,7 @@ function Production.compute_production(factory, full)
                         local fluidbox = nil
                         local fluid_index = 1
                         local item_index = 1
-                        for _, product in pairs(products) do
+                        for index, product in pairs(products) do
                             if product.type == "item" then
                                 local count = output_inv[item_index].count
                                 local amount = product.amount
@@ -604,10 +612,18 @@ function Production.compute_production(factory, full)
             end
             machine.craft_per_s = craft_per_s
             if machine.products then
-                for name, count in pairs(machine.products) do
-                    local amount = count * craft_per_s
-                    real_product_map[name] =
-                        (real_product_map[name] or 0) + amount
+                for _, info in pairs(machine.product_infos) do
+                    local name = info.type .. "/" .. info.name
+                    local count = machine.products[name]
+                    local amount
+                    if not info.ignored_by_productivity then
+                        amount = count * craft_per_s
+                    else
+                        amount = (count - info.ignored_by_productivity) * craft_per_s +
+                                info.ignored_by_productivity  * machine.theorical_craft_s
+                        machine.products[name] = amount / craft_per_s
+                    end
+                    real_product_map[name] = (real_product_map[name] or 0) + amount
                 end
             end
             if machine.ingredients then

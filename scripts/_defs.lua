@@ -36,6 +36,7 @@ local tools = require("scripts.tools")
 ---@field type string
 ---@field amount number
 ---@field temperature number
+---@field ignored_by_productivity number?
 
 ---@class Factory
 ---@field machines Machine[]
