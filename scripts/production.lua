@@ -419,7 +419,7 @@ function Production.add_to_selection(factory, new_entities)
     end
 
     for _, e in pairs(new_entities) do
-        if e.valid and not map[e.unit_number] then
+        if e.valid and e.unit_number and not map[e.unit_number] then
             table.insert(entities, e)
             map[e.unit_number] = e
         end

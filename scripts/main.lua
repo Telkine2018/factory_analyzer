@@ -901,6 +901,27 @@ remote.add_interface("factory_analyzer", {
             end
         end
         return result
+    end,
+
+    get_outputs  = function(player_index)
+
+        ---@type LuaPlayer
+        local player = game.players[player_index]
+        local vars = tools.get_vars(player)
+
+        ---@type Factory
+        local factory = vars.factory
+        if not factory then return nil end
+
+        if not factory.theorical_ingredient_map or not factory.theorical_product_map  then return nil end
+
+        local result = {}
+        for name, amount in pairs(factory.theorical_product_map) do
+            if not factory.theorical_ingredient_map[name] then
+                result[name] = amount
+            end
+        end
+        return result
     end
 })
 
