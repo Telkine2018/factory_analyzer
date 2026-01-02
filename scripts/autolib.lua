@@ -17,7 +17,7 @@ local function on_shift_button1(e)
     local vars = tools.get_vars(player)
     if entity.type == "furnace" then
         if not entity.get_recipe() then
-            local inv = entity.get_inventory(defines.inventory.furnace_source)
+            local inv = entity.get_inventory(defines.inventory.crafter_input)
             if not inv then return end
 
             ---@type table<string, string>
