@@ -1,14 +1,14 @@
 {
   "name": "factory_analyzer",
-  "version": "2.0.2",
+  "version": "2.1.0",
   "title": "Factory Analyzer",
   "author": "Telkine2018",
   "contact": "",
   "homepage": "",
   "description": "Analyze production of a set of machines in a factory and compare theoritical and real production",
-  "factorio_version": "2.0",
+  "factorio_version": "2.1",
   "dependencies": [
-		"base >= 2.0.0" ,
+		"base >= 2.1.0" ,
 		"flib >= 0.8.2"
 	]
 }

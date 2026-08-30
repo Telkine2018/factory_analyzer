@@ -99,7 +99,7 @@ function Production.load_structure(factory, entities)
                 if recipe and recipe.products then
                     if #recipe.products == 1 then
                         local product = recipe.products[1]
-                        if product.probability == 0 then
+                        if product.independent_probability == 0 then
                             goto skip_voider
                         end
                     end
@@ -170,7 +170,8 @@ function Production.load_structure(factory, entities)
                     local products = {}
                     machine.product_infos = {}
                     for _, product in ipairs(recipe.products) do
-                        local probability = (product.probability or 1)
+                        local pmax = (product.shared_probability and product.shared_probability.max) or 1
+                        local probability = (product.independent_probability or 1) * pmax
 
                         local amount = product.amount or ((product.amount_max + product.amount_min) / 2)
                         local total
@@ -301,12 +302,13 @@ function Production.load_structure(factory, entities)
                         product_per_second = resource_multiplier
                         machine.theorical_craft_s = product_per_second
 
-                        for _, product in pairs(resource_data.products) do
+                        for _, product in pairs(resource_data.products or {}) do
                             local amount = product.amount
                             if not amount then
                                 amount = (product.amount_max + product.amount_min) / 2
                             end
-                            amount = amount * (product.probability or 1)
+                            local pmax = (product.shared_probability and product.shared_probability.max) or 1
+                            amount = amount * (product.independent_probability or 1) * pmax
 
                             local name = product.type .. "/" .. product.name
                             machine.products[name] = amount
@@ -508,7 +510,7 @@ function Production.compute_production(factory, full)
                     local recipe = get_recipe(entity)
                     if recipe then
                         local ingredients = recipe.ingredients
-                        local inv = entity.get_inventory(defines.inventory.assembling_machine_input)
+                        local inv = entity.get_inventory(defines.inventory.crafter_input)
                         ---@cast inv -nil
                         local index = 1
                         for _, ingredient in pairs(ingredients) do
@@ -527,11 +529,10 @@ function Production.compute_production(factory, full)
                     if recipe then
                         local ingredients = recipe.ingredients
                         local index = 1
-                        local fluidbox = entity.fluidbox
                         for _, ingredient in pairs(ingredients) do
                             if ingredient.type == "fluid" then
-                                local fb = fluidbox[index]
-                                if not fb or fb.amount < ingredient.amount then
+                                local amount = entity.get_fluid_count(ingredient.name)
+                                if not amount or amount < ingredient.amount then
                                     machine.missing_product = "fluid/" ..
                                         ingredient.name
                                     break

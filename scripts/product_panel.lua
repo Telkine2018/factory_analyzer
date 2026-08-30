@@ -128,51 +128,53 @@ function ProductPanel.create(inner_frame, factory, product)
     for _, machine in pairs(machines) do
 
         local proto = prototypes.entity[machine.name]
-        local item = proto.items_to_place_this[1].name
-        local label_flow = product_panel.add {
-            type = "flow",
-            direction = "horizontal"
-        }
-        local machine_button = label_flow.add {
-            type = "sprite-button",
-            sprite = "item/" .. item,
-            tooltip = proto.localised_name,
-            style = prefix .. "_button_default",
-            name = prefix .. "_machine"
-        }
-        machine_button.tags = {id = machine.id}
-        machine_button.style.right_margin = 10
-
-        recipe_flow = product_panel.add {
-            type = "flow",
-            direction = "horizontal",
-            name = "recipe_flow_" .. machine.id
-        }
-        for n, count in pairs(machine.ingredients) do
-            add_button(n, "consumed", machine)
-        end
-
-        recipe_flow.add {type = "label", caption = " -> "}
-
-        for n, count in pairs(machine.products) do
-            add_button(n, "produced", machine)
-        end
-
-        add_empty_slot(machine, "produced")
-        add_empty_slot(machine, "consumed")
-
-        if not onlytheoric then
-            local status_label = product_panel.add {
-                type = "label",
-                caption = "",
-                name = "m" .. machine.id .. "/status"
+        if proto.items_to_place_this and #proto.items_to_place_this > 0 then
+            local item = proto.items_to_place_this[1].name
+            local label_flow = product_panel.add {
+                type = "flow",
+                direction = "horizontal"
             }
-            status_label.style.horizontal_align = "center"
-            status_label.style.minimal_width = status_w
-        end
+            local machine_button = label_flow.add {
+                type = "sprite-button",
+                sprite = "item/" .. item,
+                tooltip = proto.localised_name,
+                style = prefix .. "_button_default",
+                name = prefix .. "_machine"
+            }
+            machine_button.tags = {id = machine.id}
+            machine_button.style.right_margin = 10
 
-        if solver or not onlytheoric then
-            add_usage(machine)            
+            recipe_flow = product_panel.add {
+                type = "flow",
+                direction = "horizontal",
+                name = "recipe_flow_" .. machine.id
+            }
+            for n, count in pairs(machine.ingredients) do
+                add_button(n, "consumed", machine)
+            end
+
+            recipe_flow.add {type = "label", caption = " -> "}
+
+            for n, count in pairs(machine.products) do
+                add_button(n, "produced", machine)
+            end
+
+            add_empty_slot(machine, "produced")
+            add_empty_slot(machine, "consumed")
+
+            if not onlytheoric then
+                local status_label = product_panel.add {
+                    type = "label",
+                    caption = "",
+                    name = "m" .. machine.id .. "/status"
+                }
+                status_label.style.horizontal_align = "center"
+                status_label.style.minimal_width = status_w
+            end
+
+            if solver or not onlytheoric then
+                add_usage(machine)            
+            end
         end
     end
 
